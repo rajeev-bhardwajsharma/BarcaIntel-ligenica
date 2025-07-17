@@ -1,1 +1,0 @@
-# BarcaIntel-ligenica
