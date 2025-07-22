@@ -51,16 +51,19 @@ for comp_id, season_id in la_liga_ids:
 
 print(f"Total Barcelona matches found: {len(barca_matches)}")
 
-
 def process_match(match):
-    match_id=match["match_id"]
-    EVENT_PATH=os.path.join(DATA_PATH,"events",f"{match_id}.json")
+    match_id = match["match_id"]
+    EVENT_PATH = os.path.join(DATA_PATH, "events", f"{match_id}.json")
 
-    with open(EVENT_PATH,"r",encoding="utf-8") as event_file:
-        events=json.load(event_file)
+    try:
+        with open(EVENT_PATH, "r", encoding="utf-8") as event_file:
+            events = json.load(event_file)
+    except FileNotFoundError:
+        print(f"Warning: Event file not found for match {match_id}. Skipping.")
+        return []
 
-    with open(os.path.join(RAW_PATH_SAVE,f"{match_id}.json"),"w",encoding="utf-8") as event_writer:
-        json.dump(events,event_writer,indent=2)
+    with open(os.path.join(RAW_PATH_SAVE, f"{match_id}.json"), "w", encoding="utf-8") as event_writer:
+        json.dump(events, event_writer, indent=2)
 
     filtered_rows = []
     
@@ -68,148 +71,110 @@ def process_match(match):
         event_type = event["type"]["name"]
         team_name = event.get("team", {}).get("name")
         possession_team = event.get("possession_team", {}).get("name")
-    
+        
+        # --- ROBUST LOCATION HANDLING ---
+        # Get the location list first, providing a safe default
+        location = event.get("location", [None, None])
+        loc_x = location[0] if location else None
+        loc_y = location[1] if len(location) > 1 else None
+
         # Case 1: Barça possession
         if team_name == "Barcelona" and possession_team == "Barcelona" and event_type in ["Pass", "Shot", "Dribble", "Ball Receipt*", "Carry"]:
             row = {
-                "match_id": match_id,
-                "event_type": event_type,
-                "minute": event["minute"],
-                "second": event["second"],
-                "team": team_name,
-                "possession_team": possession_team,
+                "match_id": match_id, "event_type": event_type, "minute": event["minute"],
+                "second": event["second"], "team": team_name, "possession_team": possession_team,
                 "player": event.get("player", {}).get("name"),
                 "play_pattern": event.get("play_pattern", {}).get("name", "Unknown"),
-                "location_x": event.get("location", [None, None])[0],
-                "location_y": event.get("location", [None, None])[1],
+                "location_x": loc_x, "location_y": loc_y,
             }
             if event_type == "Pass":
                 pass_data = event.get("pass", {})
-                
+                end_loc = pass_data.get("end_location", [None, None])
+                row["pass_end_x"] = end_loc[0] if end_loc else None
+                row["pass_end_y"] = end_loc[1] if len(end_loc) > 1 else None
+                # ... other pass data
                 row["pass_outcome"] = pass_data.get("outcome", {}).get("name")
-                row["pass_end_x"] = pass_data.get("end_location", [None, None])[0]
-                row["pass_end_y"] = pass_data.get("end_location", [None, None])[1]
                 row["recipient"] = pass_data.get("recipient", {}).get("name")
                 row["pass_length"] = pass_data.get("length")
                 row["pass_technique"] = pass_data.get("technique", {}).get("name")
                 row["goal_assist"] = pass_data.get("goal_assist", False)
                 row["shot_assist"] = pass_data.get("shot_assist", False)
+
             if event_type == "Shot":
-                shot_data=event.get("shot",{})
-
-                row["shot_end_location"]=shot_data.get("end_location",[None,None])[0]
-                row["shot_outcome"]=shot_data.get("outcome",{}).get("name")
-                row["shot_probability_of_goal"]=shot_data.get("statsbomb_xg")
-                row["shot_technique"]=shot_data.get("technique",{}).get("name")
-                row["shot_type"]=shot_data.get("type",{}).get("name")
-
-           
-
+                shot_data = event.get("shot", {})
+                # --- FIX APPLIED HERE ---
+                end_loc = shot_data.get("end_location", [None, None, None])
+                row["shot_end_location_x"] = end_loc[0] if end_loc else None
+                row["shot_end_location_y"] = end_loc[1] if len(end_loc) > 1 else None
+                row["shot_end_location_z"] = end_loc[2] if len(end_loc) > 2 else None
+                # ... other shot data
+                row["shot_outcome"] = shot_data.get("outcome", {}).get("name")
+                row["shot_statsbomb_xg"] = shot_data.get("statsbomb_xg")
+                row["shot_technique"] = shot_data.get("technique", {}).get("name")
+                row["shot_type"] = shot_data.get("type", {}).get("name")
 
             if event_type == "Dribble":
-                dribble_data=event.get("dribble",{})
-
-                row["dribble_skill_full_nutmeg"]=dribble_data.get("nutmeg",False)
-                row["dribble_overrun"]=dribble_data.get("overrun",False)
-                row["dribble_outcome"]=dribble_data.get("outcome",{}).get("name")
-
+                dribble_data = event.get("dribble", {})
+                row["dribble_nutmeg"] = dribble_data.get("nutmeg", False)
+                row["dribble_overrun"] = dribble_data.get("overrun", False)
+                row["dribble_outcome"] = dribble_data.get("outcome", {}).get("name")
 
             if event_type == "Carry":
-                carry_data=event.get("carry",{})
-
-                row["carry_end_location"]=carry_data.get("end_location",[None,None])[0]
+                carry_data = event.get("carry", {})
+                end_loc = carry_data.get("end_location", [None, None])
+                row["carry_end_location_x"] = end_loc[0] if end_loc else None
+                row["carry_end_location_y"] = end_loc[1] if len(end_loc) > 1 else None
 
             filtered_rows.append(row)
                 
-
-    
         # Case 2: Barça defending
         elif team_name == "Barcelona" and possession_team != "Barcelona" and event_type in ["Duel", "Block", "Interception", "Goal Keeper", "Pressure"]:
             row = {
-                "match_id": match_id,
-                "event_type": event_type,
-                "minute": event["minute"],
-                "second": event["second"],
-                "team": team_name,
-                "possession_team": possession_team,
+                "match_id": match_id, "event_type": event_type, "minute": event["minute"],
+                "second": event["second"], "team": team_name, "possession_team": possession_team,
                 "player": event.get("player", {}).get("name"),
                 "play_pattern": event.get("play_pattern", {}).get("name", "Unknown"),
-                "location_x": event.get("location", [None, None])[0],
-                "location_y": event.get("location", [None, None])[1],
+                "location_x": loc_x, "location_y": loc_y,
             }
-        
-            # --- DUEL ---
+            # ... (rest of the code for defensive actions is fine as it doesn't access end_locations)
             if event_type == "Duel":
                 duel_data = event.get("duel", {})
                 row["duel_outcome"] = duel_data.get("outcome", {}).get("name")
                 row["duel_type"] = duel_data.get("type", {}).get("name")
-        
-            # --- BLOCK ---
             if event_type == "Block":
-                block_data = event.get("block", {})
-                row["block_deflection"] = block_data.get("deflection", False)
-        
-            # --- INTERCEPTION ---
+                row["block_deflection"] = event.get("block", {}).get("deflection", False)
             if event_type == "Interception":
-                interception_data = event.get("interception", {})
-                row["interception_outcome"] = interception_data.get("outcome", {}).get("name")
-        
-            # --- GOAL KEEPER ---
+                row["interception_outcome"] = event.get("interception", {}).get("outcome", {}).get("name")
             if event_type == "Goal Keeper":
                 keeper_data = event.get("goalkeeper", {})
-                row["gk_type"] = keeper_data.get("type", {}).get("name")
-                row["gk_technique"] = keeper_data.get("technique", {}).get("name")
-                row["gk_outcome"] = keeper_data.get("outcome", {}).get("name")
-                row["gk_position"] = keeper_data.get("position", {}).get("name")
-                row["gk_body_part"] = keeper_data.get("body_part", {}).get("name")
-        
-            # --- PRESSURE ---
+                row["gk_type"], row["gk_technique"], row["gk_outcome"], row["gk_position"], row["gk_body_part"] = keeper_data.get("type", {}).get("name"), keeper_data.get("technique", {}).get("name"), keeper_data.get("outcome", {}).get("name"), keeper_data.get("position", {}).get("name"), keeper_data.get("body_part", {}).get("name")
             if event_type == "Pressure":
-                pressure_data = event.get("pressure", {})
-                row["pressure_applied"] = pressure_data.get("counterpress", False)
-        
+                row["pressure_counterpress"] = event.get("pressure", {}).get("counterpress", False)
+            
             filtered_rows.append(row)
 
-
-    
         # Case 3: Opponent defending Barça
         elif team_name != "Barcelona" and possession_team == "Barcelona" and event_type in ["Duel", "Pressure", "Clearance", "Goal Keeper"]:
             row = {
-                "match_id": match_id,
-                "event_type": event_type,
-                "minute": event["minute"],
-                "second": event["second"],
-                "team": team_name,
-                "possession_team": possession_team,
+                "match_id": match_id, "event_type": event_type, "minute": event["minute"],
+                "second": event["second"], "team": team_name, "possession_team": possession_team,
                 "player": event.get("player", {}).get("name"),
                 "play_pattern": event.get("play_pattern", {}).get("name", "Unknown"),
-                "location_x": event.get("location", [None, None])[0],
-                "location_y": event.get("location", [None, None])[1],
+                "location_x": loc_x, "location_y": loc_y,
             }
+            # ... (rest of the code for opponent defensive actions)
             if event_type == "Duel":
                 duel_data = event.get("duel", {})
                 row["duel_outcome"] = duel_data.get("outcome", {}).get("name")
                 row["duel_type"] = duel_data.get("type", {}).get("name")
-
-
-            # --- GOAL KEEPER ---
             if event_type == "Goal Keeper":
                 keeper_data = event.get("goalkeeper", {})
-                row["gk_type"] = keeper_data.get("type", {}).get("name")
-                row["gk_technique"] = keeper_data.get("technique", {}).get("name")
-                row["gk_outcome"] = keeper_data.get("outcome", {}).get("name")
-                row["gk_position"] = keeper_data.get("position", {}).get("name")
-                row["gk_body_part"] = keeper_data.get("body_part", {}).get("name")
-        
-            # --- PRESSURE ---
+                row["gk_type"], row["gk_technique"], row["gk_outcome"], row["gk_position"], row["gk_body_part"] = keeper_data.get("type", {}).get("name"), keeper_data.get("technique", {}).get("name"), keeper_data.get("outcome", {}).get("name"), keeper_data.get("position", {}).get("name"), keeper_data.get("body_part", {}).get("name")
             if event_type == "Pressure":
-                pressure_data = event.get("pressure", {})
-                row["pressure_applied"] = pressure_data.get("counterpress", False)
-
-            
+                row["pressure_counterpress"] = event.get("pressure", {}).get("counterpress", False)
 
             filtered_rows.append(row)
-
+            
     return filtered_rows
 
 
