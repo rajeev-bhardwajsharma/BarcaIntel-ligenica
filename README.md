@@ -1,4 +1,4 @@
-#  FC Barcelona: A Quantitative Look at Tactical Evolution (Enrique Valverde)
+#  FC Barcelona: A Quantitative Look at Tactical Evolution (Enrique & Valverde)
 
 Football has always been full of opinions but what if we let the *data* do the talking?
 
@@ -45,7 +45,7 @@ This analysis blends **feature engineering** with **unsupervised learning**, all
 - **Hierarchical Clustering:** to map relationships between player roles  
 - **t-SNE:** for dimensionality reduction and visual exploration of clusters  
 
-### 🧠 Key Libraries
+###  Key Libraries
 `pandas`, `scikit-learn`, `matplotlib`, `seaborn`, `mplsoccer`
 
 ---
