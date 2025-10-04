@@ -1,4 +1,4 @@
-#  FC Barcelona: A Quantitative Look at Tactical Evolution (Enrique → Valverde)
+#  FC Barcelona: A Quantitative Look at Tactical Evolution (Enrique Valverde)
 
 Football has always been full of opinions but what if we let the *data* do the talking?
 
@@ -9,7 +9,7 @@ It’s not about proving who was better it’s about understanding *how* the tea
 
 ---
 
-## 🎯 Project Intent
+##  Project Intent
 
 The goal is to build a **machine learning framework** that can *recognize and measure* tactical fingerprints in football.  
 Rather than manually labeling tactics, the project explores whether algorithms can discover those patterns themselves.
@@ -24,21 +24,21 @@ At its heart, this project is an attempt to **quantify football intelligence**  
 
 ---
 
-## 🧩 Methodology & Tools
+##  Methodology & Tools
 
 This analysis blends **feature engineering** with **unsupervised learning**, allowing the data itself to reveal its internal logic.
 
-### 📊 Data Source
+### Data Source
 - **StatsBomb Open Data**  rich event level match data with granular details on passes, carries, pressures, and more.
 
-### 🏗️ Feature Engineering Highlights
+###  Feature Engineering Highlights
 - Per 90 minute normalizations for fair player comparison  
 - Progressive pass & carry distances  
 - Average shot quality (xG)  
 - Possession tempo & directness metrics  
 - Defensive intensity features  
 
-### 🤖 Machine Learning Models
+###  Machine Learning Models
 - **K-Means Clustering:** to identify core possession styles and player roles  
 - **Gaussian Mixture Models (GMM):** to detect “hybrid” player behaviors  
 - **Isolation Forest:** to find statistically unique or standout players  
@@ -50,7 +50,7 @@ This analysis blends **feature engineering** with **unsupervised learning**, all
 
 ---
 
-## 📂 Repository Structure
+##  Repository Structure
 
 | Notebook | Description |
 |-----------|--------------|
@@ -61,7 +61,7 @@ This analysis blends **feature engineering** with **unsupervised learning**, all
 
 ---
 
-## 🪶 Closing Thoughts
+## Closing Thoughts
 
 This project isn’t about nostalgia or debate  it’s about **discovery**.  
 When you strip away opinions and visuals, football becomes patterns  interconnected movements that tell their own story.
